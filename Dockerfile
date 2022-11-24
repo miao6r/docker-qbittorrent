@@ -1,71 +1,32 @@
-FROM ghcr.io/linuxserver/baseimage-alpine:edge
+FROM debian:bullseye
 
 # set version label
-ARG BUILD_DATE
-ARG VERSION
-ARG QBITTORRENT_VERSION
+ARG VERSION="4.3.9"
+ARG S6_OVERLAY_VERSION=3.1.2.1
+ARG QBITTORRENT_VERSION="4.3.9"
 ARG QBT_VERSION
-LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
-LABEL maintainer="thespad"
+LABEL build_version="version:- ${VERSION}"
+LABEL maintainer="lucislu"
 
 # environment settings
 ARG UNRAR_VERSION=6.1.7
+ENV ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME="120000"
 ENV HOME="/config" \
 XDG_CONFIG_HOME="/config" \
 XDG_DATA_HOME="/config"
 
-# install runtime packages and qbitorrent-cli
-RUN \
-  echo "**** install build packages ****" && \
-  apk add --no-cache --upgrade --virtual=build-dependencies \
-    make \
-    g++ \
-    gcc && \
-  echo "**** install packages ****" && \
-  apk add -U --update --no-cache \
-    icu-libs \
-    libstdc++ \
-    openssl \
-    p7zip \
-    python3 && \
-  echo "**** install unrar from source ****" && \
-  mkdir /tmp/unrar && \
-  curl -o \
-    /tmp/unrar.tar.gz -L \
-    "https://www.rarlab.com/rar/unrarsrc-${UNRAR_VERSION}.tar.gz" && \
-  tar xf \
-    /tmp/unrar.tar.gz -C \
-    /tmp/unrar --strip-components=1 && \
-  cd /tmp/unrar && \
-  make && \
-  install -v -m755 unrar /usr/bin && \
-  if [ -z ${QBITTORRENT_VERSION+x} ]; then \
-    QBITTORRENT_VERSION=$(curl -sL "http://dl-cdn.alpinelinux.org/alpine/edge/community/x86_64/APKINDEX.tar.gz" | tar -xz -C /tmp \
-    && awk '/^P:qbittorrent-nox$/,/V:/' /tmp/APKINDEX | sed -n 2p | sed 's/^V://'); \
-  fi && \
-  apk add -U --upgrade --no-cache \
-    qbittorrent-nox==${QBITTORRENT_VERSION} && \
-  echo "***** install qbitorrent-cli ****" && \
-  mkdir /qbt && \
-  QBT_VERSION=$(curl -sL "https://api.github.com/repos/fedarovich/qbittorrent-cli/releases" \
-      | awk '/tag_name/{print $4;exit}' FS='[""]'); \
-  curl -o \
-    /tmp/qbt.tar.gz -L \
-    "https://github.com/fedarovich/qbittorrent-cli/releases/download/${QBT_VERSION}/qbt-linux-alpine-x64-${QBT_VERSION:1}.tar.gz" && \
-  tar xf \
-    /tmp/qbt.tar.gz -C \
-    /qbt && \
-  echo "**** cleanup ****" && \
-  apk del --purge \
-    build-dependencies && \
-  rm -rf \
-    /root/.cache \
-    /tmp/*
+
+# install s6-overlay
+RUN apt-get update && apt-get install -y xz-utils netcat
+
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
+RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+RUN tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz
+ENTRYPOINT ["/init"]
+
+ADD https://github.com/userdocs/qbittorrent-nox-static/releases/download/release-${QBITTORRENT_VERSION}_v2.0.5/x86_64-icu-qbittorrent-nox /tmp
+RUN cp /tmp/x86_64-icu-qbittorrent-nox /usr/bin/qbittorrent-nox && chmod +rx /usr/bin/qbittorrent-nox
 
 # add local files
 COPY root/ /
-
-# ports and volumes
-EXPOSE 8080 6881 6881/udp
-
-VOLUME /config

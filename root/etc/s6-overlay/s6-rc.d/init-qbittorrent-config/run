@@ -1,20 +1,27 @@
 #!/usr/bin/with-contenv bash
-
+WEBUI_PORT=${WEBUI_PORT:-8080}
+PEER_PORT=${PEER_PORT:-58080}
 # make our folder
-mkdir -p /config/qBittorrent
-
+mkdir -p /config/qBittorrent/config
+mkdir -p /watch
+echo "WEBUI_PORT: $WEBUI_PORT"
+echo "PEER_PORT: $PEER_PORT"
 # copy default config
-if [[ ! -f /config/qBittorrent/qBittorrent.conf ]]; then
-    cp /defaults/qBittorrent.conf /config/qBittorrent/qBittorrent.conf
+if [[ ! -f /config/qBittorrent/config/qBittorrent.conf ]]; then
+    cp /defaults/qBittorrent.conf /config/qBittorrent/config/qBittorrent.conf
+    sed -i "s/^\(WebUI\\\Port=\).*\$/\1$WEBUI_PORT/g" /config/qBittorrent/config/qBittorrent.conf
+    sed -i "s/^\(Connection\\\PortRangeMin=\).*\$/\1$PEER_PORT/g" /config/qBittorrent/config/qBittorrent.conf
 fi
 
 # chown download directory if currently not set to abc
 if [[ -d /downloads ]]; then
     if [[ "$(stat -c '%U' /downloads)" != "abc" ]]; then
-        lsiown -R abc:abc /downloads
+        chown -R abc:abc /downloads
     fi
 fi
 
 # permissions
-lsiown -R abc:abc \
+chown -R abc:abc \
     /config
+chown -R abc:abc \
+    /watch
