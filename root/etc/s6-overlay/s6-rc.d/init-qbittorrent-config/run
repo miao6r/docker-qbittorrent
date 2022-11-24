@@ -15,13 +15,13 @@ fi
 
 # chown download directory if currently not set to abc
 if [[ -d /downloads ]]; then
-    if [[ "$(stat -c '%U' /downloads)" != "abc" ]]; then
+    if [[ "$(stat -c '%U' /downloads)" != "$(stat -c '%U' /defaults)" ]]; then
         chown -R abc:abc /downloads
     fi
 fi
 
-# permissions
-chown -R abc:abc \
-    /config
-chown -R abc:abc \
-    /watch
+if [[ -d /config ]]; then
+    if [[ "$(stat -c '%U' /config)" != "$(stat -c '%U' /defaults)" ]]; then
+        chown -R abc:abc /config
+    fi
+fi

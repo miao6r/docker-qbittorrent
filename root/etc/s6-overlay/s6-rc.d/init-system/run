@@ -9,9 +9,11 @@ usermod -G users abc
 groupmod -o -g "$PGID" abc
 usermod -o -u "$PUID" abc
 
+
+mkdir -p /defaults
+chown -R abc:abc /defaults
 echo "
-User uid:    $(id -u abc)
-User gid:    $(id -g abc)
+User uid:    $(id -u abc) $(stat -c '%U' /defaults)
+Group gid:   $(id -g abc) $(stat -c '%G' /defaults)
 -------------------------------------
 "
-chown -R abc:abc /defaults
